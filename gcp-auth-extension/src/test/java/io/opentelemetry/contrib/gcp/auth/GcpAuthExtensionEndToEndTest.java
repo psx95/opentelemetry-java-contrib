@@ -93,6 +93,33 @@ public class GcpAuthExtensionEndToEndTest {
     // Set up the mock gcp metadata server to provide fake credentials
     String accessTokenResponse =
         "{\"access_token\": \"fake.access_token\",\"expires_in\": 3600, \"token_type\": \"Bearer\"}";
+    String defaultScopeResponse =
+        String.join(
+            " ",
+            "https://www.googleapis.com/auth/devstorage.read_only",
+            "https://www.googleapis.com/auth/logging.write",
+            "https://www.googleapis.com/auth/monitoring.write",
+            "https://www.googleapis.com/auth/service.management.readonly",
+            "https://www.googleapis.com/auth/servicecontrol",
+            "https://www.googleapis.com/auth/trace.append");
+
+    String serviceAccountJson =
+        "{\n"
+            + "  \"default\": {\n"
+            + "    \"aliases\": [\n"
+            + "      \"default\"\n"
+            + "    ],\n"
+            + "    \"email\": \"sample@appspot.gserviceaccount.com\",\n"
+            + "    \"scopes\": [\n"
+            + "      \"https://www.googleapis.com/auth/devstorage.read_only\",\n"
+            + "      \"https://www.googleapis.com/auth/logging.write\",\n"
+            + "      \"https://www.googleapis.com/auth/monitoring.write\",\n"
+            + "      \"https://www.googleapis.com/auth/service.management.readonly\",\n"
+            + "      \"https://www.googleapis.com/auth/servicecontrol\",\n"
+            + "      \"https://www.googleapis.com/auth/trace.append\"\n"
+            + "    ]\n"
+            + "  }\n"
+            + "}";
     mockGcpOAuth2Server = ClientAndServer.startClientAndServer(MOCK_GCP_OAUTH2_PORT);
 
     MockServerClient mockServerClient =
@@ -106,6 +133,22 @@ public class GcpAuthExtensionEndToEndTest {
                 .withStatusCode(200)
                 .withHeader("Content-Type", "application/json")
                 .withBody(new JsonBody(accessTokenResponse)));
+    // mock the scope retrieval
+    mockServerClient
+        .when(request().withMethod("GET").withPath("/scopes"))
+        .respond(
+            response()
+                .withStatusCode(200)
+                .withHeader("Content-Type", "application/text")
+                .withBody(defaultScopeResponse));
+
+    mockServerClient
+        .when(request().withMethod("GET").withPath("/service-accounts"))
+        .respond(
+            response()
+                .withStatusCode(200)
+                .withHeader("Content-Type", "application/json")
+                .withBody(new JsonBody(serviceAccountJson)));
   }
 
   @AfterAll
